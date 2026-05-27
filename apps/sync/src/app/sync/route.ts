@@ -136,6 +136,21 @@ export async function GET() {
   return NextResponse.json({ ok: true })
 }
 
+export async function PUT(request: NextRequest) {
+  const syncSecret = process.env.SYNC_SECRET
+  const auth = request.headers.get('authorization')
+  if (!syncSecret || auth !== `Bearer ${syncSecret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  const token = process.env.WEBFLOW_API_TOKEN!
+  const collectionId = process.env.WEBFLOW_COLLECTION_ID!
+  const res = await fetch(`https://api.webflow.com/v2/collections/${collectionId}`, {
+    headers: { Authorization: `Bearer ${token}`, 'accept-version': '1.0.0' },
+  })
+  const schema = await res.json()
+  return NextResponse.json(schema)
+}
+
 export async function POST(request: NextRequest) {
   const syncSecret = process.env.SYNC_SECRET
   const auth = request.headers.get('authorization')
