@@ -70,7 +70,7 @@ async function buildResolvers(token: string, collectionId: string): Promise<Reso
     }
 
     // Reference fields: fetch the referenced collection and map ID → name
-    if (field.type === 'ItemRef' && field.validations?.collectionId) {
+    if ((field.type === 'ItemRef' || field.type === 'Reference') && field.validations?.collectionId) {
       const refItems = await fetchAllItems(token, field.validations.collectionId)
       const map = new Map<string, string>()
       for (const item of refItems) {
