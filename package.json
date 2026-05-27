@@ -1,0 +1,12 @@
+{
+  "name": "algolia-webflow",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:sync": "npm run dev --workspace=apps/sync",
+    "build:library": "npm run build --workspace=algolia-webflow-library"
+  }
+}
