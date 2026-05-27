@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+export async function GET() {
+  return NextResponse.json({ ok: true })
+}
+
 interface WebflowWebhookPayload {
   triggerType:
     | 'collection_item_created'
