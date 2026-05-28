@@ -174,6 +174,21 @@ function initInstance(wrapper: HTMLElement): void {
     })
   })
 
+  // Filter selects (e.g. year dropdown)
+  wrapper.querySelectorAll<HTMLSelectElement>('[data-algolia-filter-select]').forEach((sel) => {
+    sel.addEventListener('change', () => {
+      const attribute = sel.getAttribute('data-algolia-filter-select')!
+      if (!instance.filters.has(attribute)) {
+        instance.filters.set(attribute, new Set())
+      }
+      const set = instance.filters.get(attribute)!
+      set.clear()
+      if (sel.value) set.add(sel.value)
+      instance.page = 0
+      search()
+    })
+  })
+
   // Sort
   const sortSelect = wrapper.querySelector<HTMLSelectElement>('[data-algolia-sort]')
   if (sortSelect) {
