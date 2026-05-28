@@ -127,7 +127,7 @@ function render(instance: AlgoliaInstance, results: SearchResults): void {
       const field = el.getAttribute('data-algolia-hide-empty')!
       const val = hit[field]
       const isEmpty = val === null || val === undefined || val === '' || (Array.isArray(val) && val.length === 0)
-      el.style.display = isEmpty ? 'none' : ''
+      el.style.setProperty('display', isEmpty ? 'none' : '', isEmpty ? 'important' : '')
     })
 
     list.appendChild(itemRoot)
