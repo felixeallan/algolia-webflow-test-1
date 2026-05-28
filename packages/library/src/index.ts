@@ -101,6 +101,56 @@ function readUrlState(instance: AlgoliaInstance, wrapper: HTMLElement): void {
   })
 }
 
+// ─── Tags ─────────────────────────────────────────────────────────────────────
+
+function renderTags(instance: AlgoliaInstance): void {
+  const { wrapper } = instance
+  const container = wrapper.querySelector<HTMLElement>('[data-algolia-tags]')
+  if (!container) return
+
+  const tagTemplate = container.querySelector<HTMLElement>('[data-algolia-tag-template]')
+  if (!tagTemplate) return
+
+  tagTemplate.style.display = 'none'
+  container.querySelectorAll('[data-algolia-tag-item]').forEach((el) => el.remove())
+
+  instance.filters.forEach((values, attribute) => {
+    values.forEach((value) => {
+      const tag = tagTemplate.cloneNode(true) as HTMLElement
+      tag.removeAttribute('data-algolia-tag-template')
+      tag.setAttribute('data-algolia-tag-item', '')
+      tag.style.display = ''
+
+      const label = tag.querySelector<HTMLElement>('[data-algolia-tag-label]')
+      if (label) label.textContent = value
+
+      const removeBtn = tag.querySelector<HTMLElement>('[data-algolia-tag-remove]') ?? tag
+      removeBtn.addEventListener('click', (e) => {
+        e.preventDefault()
+        const set = instance.filters.get(attribute)
+        if (!set) return
+        set.delete(value)
+
+        // Sync UI: deactivate matching filter element, reset dropdown if applicable
+        const filterEl = wrapper.querySelector<HTMLElement>(
+          `[data-algolia-filter="${attribute}"][data-algolia-value="${value}"]`
+        )
+        if (filterEl) forceFilterState(filterEl, false)
+
+        const filterSelect = wrapper.querySelector<HTMLSelectElement>(
+          `[data-algolia-filter-select="${attribute}"]`
+        )
+        if (filterSelect && filterSelect.value === value) filterSelect.value = ''
+
+        instance.page = 0
+        runSearch(instance)
+      })
+
+      container.appendChild(tag)
+    })
+  })
+}
+
 // ─── Render ───────────────────────────────────────────────────────────────────
 
 function render(instance: AlgoliaInstance, results: SearchResults): void {
@@ -129,6 +179,8 @@ function render(instance: AlgoliaInstance, results: SearchResults): void {
   if (pageInfo) pageInfo.textContent = `Page ${results.page + 1} of ${results.nbPages}`
   if (prevBtn) prevBtn.disabled = results.page === 0
   if (nextBtn) nextBtn.disabled = results.page >= results.nbPages - 1
+
+  renderTags(instance)
 
   results.hits.forEach((hit) => {
     let itemRoot: HTMLElement
