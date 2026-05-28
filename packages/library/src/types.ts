@@ -9,6 +9,7 @@ export interface AlgoliaInstance {
   filters: Map<string, Set<string>>
   sortIndex: string
   urlState: boolean
+  filterAttributes: Set<string>
   wrapper: HTMLElement
 }
 

@@ -48,11 +48,11 @@ async function runSearch(instance: AlgoliaInstance): Promise<void> {
 function pushUrlState(instance: AlgoliaInstance): void {
   const params = new URLSearchParams(window.location.search)
 
-  // Clear previous state for this instance's attributes
+  // Clear all known params for this instance
   params.delete('q')
   params.delete('page')
   params.delete('sort')
-  instance.filters.forEach((_, attr) => params.delete(attr))
+  instance.filterAttributes.forEach((attr) => params.delete(attr))
 
   if (instance.query) params.set('q', instance.query)
   if (instance.page > 0) params.set('page', String(instance.page))
@@ -245,6 +245,12 @@ function initInstance(wrapper: HTMLElement): void {
     filters: new Map(),
     sortIndex: '',
     urlState: wrapper.hasAttribute('data-algolia-url-state'),
+    filterAttributes: new Set([
+      ...[...wrapper.querySelectorAll('[data-algolia-filter]')]
+        .map((el) => el.getAttribute('data-algolia-filter')!),
+      ...[...wrapper.querySelectorAll('[data-algolia-filter-select]')]
+        .map((el) => el.getAttribute('data-algolia-filter-select')!),
+    ]),
     wrapper,
   }
 
