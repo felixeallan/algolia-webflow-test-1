@@ -75,7 +75,7 @@ async function buildResolvers(
     }
 
     // Reference fields: fetch the referenced collection
-    if ((field.type === 'ItemRef' || field.type === 'Reference') && field.validations?.collectionId) {
+    if ((field.type === 'ItemRef' || field.type === 'Reference' || field.type === 'MultiReference') && field.validations?.collectionId) {
       const refItems = await fetchAllItems(token, field.validations.collectionId)
       const nameMap = new Map<string, string>()
       const dataMap = new Map<string, Record<string, unknown>>()
