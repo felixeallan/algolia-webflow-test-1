@@ -141,18 +141,32 @@ function initInstance(wrapper: HTMLElement): void {
     el.addEventListener('click', () => {
       const attribute = el.getAttribute('data-algolia-filter')!
       const value = el.getAttribute('data-algolia-value')!
+      const isRadio = !!el.querySelector('input[type="radio"]')
 
       if (!instance.filters.has(attribute)) {
         instance.filters.set(attribute, new Set())
       }
       const set = instance.filters.get(attribute)!
 
-      if (set.has(value)) {
-        set.delete(value)
-        el.removeAttribute('data-active')
+      if (isRadio) {
+        // Single-select: clear the whole group first
+        wrapper.querySelectorAll<HTMLElement>(`[data-algolia-filter="${attribute}"]`)
+          .forEach((other) => other.removeAttribute('data-active'))
+        set.clear()
+        // Clicking the active radio again deselects it
+        if (!el.hasAttribute('data-active')) {
+          set.add(value)
+          el.setAttribute('data-active', '')
+        }
       } else {
-        set.add(value)
-        el.setAttribute('data-active', '')
+        // Multi-select: toggle
+        if (set.has(value)) {
+          set.delete(value)
+          el.removeAttribute('data-active')
+        } else {
+          set.add(value)
+          el.setAttribute('data-active', '')
+        }
       }
 
       instance.page = 0
