@@ -144,6 +144,17 @@ function debounce<T extends (...args: unknown[]) => void>(fn: T, ms: number): T 
   }) as T
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function deactivateFilter(el: HTMLElement): void {
+  el.removeAttribute('data-active')
+  // Uncheck hidden native input (Webflow custom checkboxes/radios)
+  const input = el.querySelector<HTMLInputElement>('input[type="checkbox"], input[type="radio"]')
+  if (input) input.checked = false
+  // Remove Webflow's visual checked class
+  el.querySelectorAll('.w--redirected-checked').forEach((div) => div.classList.remove('w--redirected-checked'))
+}
+
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 
 function initInstance(wrapper: HTMLElement): void {
@@ -196,7 +207,7 @@ function initInstance(wrapper: HTMLElement): void {
       if (isRadio) {
         // Single-select: clear the whole group first
         wrapper.querySelectorAll<HTMLElement>(`[data-algolia-filter="${attribute}"]`)
-          .forEach((other) => other.removeAttribute('data-active'))
+          .forEach((other) => deactivateFilter(other))
         set.clear()
         // Clicking the active radio again deselects it
         if (!el.hasAttribute('data-active')) {
@@ -207,7 +218,7 @@ function initInstance(wrapper: HTMLElement): void {
         // Multi-select: toggle
         if (set.has(value)) {
           set.delete(value)
-          el.removeAttribute('data-active')
+          deactivateFilter(el)
         } else {
           set.add(value)
           el.setAttribute('data-active', '')
@@ -244,7 +255,7 @@ function initInstance(wrapper: HTMLElement): void {
         // Clear a specific filter group
         instance.filters.get(attribute)?.clear()
         wrapper.querySelectorAll<HTMLElement>(`[data-algolia-filter="${attribute}"]`)
-          .forEach((el) => el.removeAttribute('data-active'))
+          .forEach((el) => deactivateFilter(el))
         wrapper.querySelectorAll<HTMLSelectElement>(`[data-algolia-filter-select="${attribute}"]`)
           .forEach((sel) => { sel.value = '' })
       } else {
@@ -253,7 +264,7 @@ function initInstance(wrapper: HTMLElement): void {
         instance.query = ''
         instance.sortIndex = ''
         wrapper.querySelectorAll<HTMLElement>('[data-algolia-filter]')
-          .forEach((el) => el.removeAttribute('data-active'))
+          .forEach((el) => deactivateFilter(el))
         wrapper.querySelectorAll<HTMLSelectElement>('[data-algolia-filter-select]')
           .forEach((sel) => { sel.value = '' })
         const searchInput = wrapper.querySelector<HTMLInputElement>('[data-algolia-search]')
