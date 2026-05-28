@@ -148,12 +148,9 @@ function debounce<T extends (...args: unknown[]) => void>(fn: T, ms: number): T 
 
 function setNativeInput(el: HTMLElement, checked: boolean): void {
   const input = el.querySelector<HTMLInputElement>('input[type="checkbox"], input[type="radio"]')
-  if (!input) return
-  input.checked = checked
-  // Dispatch change so Webflow's JS updates w--redirected-checked
-  input.dispatchEvent(new Event('change', { bubbles: true }))
-  // Manually sync as fallback in case Webflow's handler doesn't fire
-  el.querySelectorAll<HTMLElement>('.w--redirected-checked')
+  if (input) input.checked = checked
+  // Target the Webflow custom input divs directly so toggle works for both add and remove
+  el.querySelectorAll<HTMLElement>('.w-checkbox-input, .w-radio-input')
     .forEach((div) => div.classList.toggle('w--redirected-checked', checked))
 }
 
