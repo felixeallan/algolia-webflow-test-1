@@ -58,6 +58,12 @@ export default {
         return Response.json({ success: true, action: 'full_sync_triggered' })
       }
 
+      // Ignore items from other collections
+      const itemCollectionId = payload._cid || payload.collectionId
+      if (env.WEBFLOW_COLLECTION_ID && itemCollectionId && itemCollectionId !== env.WEBFLOW_COLLECTION_ID) {
+        return Response.json({ success: true, action: 'ignored' })
+      }
+
       switch (triggerType) {
         case 'collection_item_created':
         case 'collection_item_changed':
