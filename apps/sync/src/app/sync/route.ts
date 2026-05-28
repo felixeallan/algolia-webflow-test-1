@@ -25,8 +25,10 @@ interface WebflowSchema {
   fields: WebflowField[]
 }
 
-// Resolvers: field slug → (id → human-readable name)
+// name resolvers: field slug → (id → name string)
 type Resolvers = Map<string, Map<string, string>>
+// data resolvers: field slug → (id → full fieldData of referenced item)
+type DataResolvers = Map<string, Map<string, Record<string, unknown>>>
 
 async function fetchAllItems(token: string, collectionId: string): Promise<WebflowItem[]> {
   const all: WebflowItem[] = []
@@ -48,14 +50,17 @@ async function fetchAllItems(token: string, collectionId: string): Promise<Webfl
   return all
 }
 
-async function buildResolvers(token: string, collectionId: string): Promise<Resolvers> {
-  const resolvers: Resolvers = new Map()
+async function buildResolvers(
+  token: string,
+  collectionId: string
+): Promise<{ nameResolvers: Resolvers; dataResolvers: DataResolvers }> {
+  const nameResolvers: Resolvers = new Map()
+  const dataResolvers: DataResolvers = new Map()
 
-  // Fetch collection schema to find Option and Reference fields
   const res = await fetch(`https://api.webflow.com/v2/collections/${collectionId}`, {
     headers: { Authorization: `Bearer ${token}`, 'accept-version': '1.0.0' },
   })
-  if (!res.ok) return resolvers
+  if (!res.ok) return { nameResolvers, dataResolvers }
 
   const schema: WebflowSchema = await res.json()
 
@@ -66,40 +71,54 @@ async function buildResolvers(token: string, collectionId: string): Promise<Reso
       for (const opt of field.validations.options) {
         map.set(opt.id, opt.name)
       }
-      resolvers.set(field.slug, map)
+      nameResolvers.set(field.slug, map)
     }
 
-    // Reference fields: fetch the referenced collection and map ID → name
+    // Reference fields: fetch the referenced collection
     if ((field.type === 'ItemRef' || field.type === 'Reference') && field.validations?.collectionId) {
       const refItems = await fetchAllItems(token, field.validations.collectionId)
-      const map = new Map<string, string>()
+      const nameMap = new Map<string, string>()
+      const dataMap = new Map<string, Record<string, unknown>>()
       for (const item of refItems) {
         const name = (item.fieldData.name ?? item.fieldData.slug ?? item.id) as string
-        map.set(item.id, name)
+        nameMap.set(item.id, name)
+        dataMap.set(item.id, item.fieldData)
       }
-      resolvers.set(field.slug, map)
+      nameResolvers.set(field.slug, nameMap)
+      dataResolvers.set(field.slug, dataMap)
     }
   }
 
-  return resolvers
+  return { nameResolvers, dataResolvers }
 }
 
 function resolveFields(
   fieldData: Record<string, unknown>,
-  resolvers: Resolvers
+  nameResolvers: Resolvers,
+  dataResolvers: DataResolvers
 ): Record<string, unknown> {
   const resolved: Record<string, unknown> = {}
 
   for (const [key, value] of Object.entries(fieldData)) {
-    const resolver = resolvers.get(key)
-    if (resolver) {
+    const nameResolver = nameResolvers.get(key)
+    if (nameResolver) {
       if (Array.isArray(value)) {
-        // Multi-reference field
-        resolved[key] = value.map((id) => resolver.get(id as string) ?? id)
+        resolved[key] = value.map((id) => nameResolver.get(id as string) ?? id)
       } else if (typeof value === 'string') {
-        resolved[key] = resolver.get(value) ?? value
+        resolved[key] = nameResolver.get(value) ?? value
       } else {
         resolved[key] = value
+      }
+
+      // Also store all sub-fields as key__subfield for dot-notation binding
+      const dataResolver = dataResolvers.get(key)
+      if (dataResolver && typeof value === 'string') {
+        const refData = dataResolver.get(value)
+        if (refData) {
+          for (const [subKey, subValue] of Object.entries(refData)) {
+            resolved[`${key}__${subKey}`] = subValue
+          }
+        }
       }
     } else {
       resolved[key] = value
@@ -167,14 +186,14 @@ export async function POST(request: NextRequest) {
     const indexName = process.env.ALGOLIA_INDEX_NAME!
 
     // Build resolvers for Option and Reference fields
-    const resolvers = await buildResolvers(webflowToken, collectionId)
+    const { nameResolvers, dataResolvers } = await buildResolvers(webflowToken, collectionId)
 
     const items = await fetchAllItems(webflowToken, collectionId)
     const published = items.filter((item) => !item.isDraft && !item.isArchived)
 
     const records = published.map((item) => ({
       objectID: item.id,
-      ...resolveFields(item.fieldData, resolvers),
+      ...resolveFields(item.fieldData, nameResolvers, dataResolvers),
     }))
 
     await algoliaIndexObjects(algoliaAppId, algoliaKey, indexName, records)
