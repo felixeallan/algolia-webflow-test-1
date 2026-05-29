@@ -145,7 +145,68 @@ In Algolia → your index → **Configuration**:
 
 Click **"Review and Save settings"**.
 
-## Step 9 — Add the library to your Webflow page
+## Step 9 — (Optional) Configure sorting
+
+Sorting in Algolia works through **replica indexes** — pre-sorted copies of the main index. Each user-facing sort option = one replica. Algolia keeps replicas in sync automatically.
+
+### 9.1 — Create one replica per sort option
+
+In Algolia → your main index → **Configuration → Replicas → Create Replica**:
+
+1. Choose **Virtual replica** (free, no extra storage)
+2. Name it descriptively, matching the format `INDEX_FIELD_DIRECTION`:
+
+| Sort option | Replica name |
+|---|---|
+| Name A → Z | `cars_name_asc` |
+| Name Z → A | `cars_name_desc` |
+| Price ↑ | `cars_price_asc` |
+| Price ↓ | `cars_price_desc` |
+| Year newest | `cars_year_desc` |
+| Year oldest | `cars_year_asc` |
+
+3. Click **Create**. Repeat for each sort option you want.
+
+### 9.2 — Configure each replica's Sort-by rule
+
+A replica is empty until you tell it how to sort. For **each** replica:
+
+1. Click the replica name (e.g. `cars_name_asc`) to open it
+2. Go to **Configuration → Relevant sort** (or "Ranking and Sorting")
+3. Add **exactly one** Sort-by rule that matches the replica's name:
+   - `cars_name_asc` → Sort-by `name` Ascending
+   - `cars_name_desc` → Sort-by `name` Descending
+   - `cars_price_asc` → Sort-by `price` Ascending
+   - …etc.
+4. Click **Review and Save settings**
+
+> **Important:** Each replica must have **exactly one** Sort-by rule. Multiple rules turn additional ones into tiebreakers, which is rarely what you want for user-facing sorting. One replica = one dropdown option.
+
+### 9.3 — Add the sort dropdown to your page
+
+Use a native `<select>` element. In **Webflow Designer → Add panel → Forms → Select**, drag a Select field onto the page (not the navigation "Dropdown" component — that's a div-based menu and won't fire `change` events).
+
+Then add `data-algolia-sort` and option values matching your replica names exactly:
+
+```html
+<select data-algolia-sort>
+  <option value="">Default (relevance)</option>
+  <option value="cars_name_asc">Name: A → Z</option>
+  <option value="cars_name_desc">Name: Z → A</option>
+  <option value="cars_price_asc">Price: Low → High</option>
+  <option value="cars_price_desc">Price: High → Low</option>
+  <option value="cars_year_desc">Year: Newest first</option>
+  <option value="cars_year_asc">Year: Oldest first</option>
+</select>
+```
+
+The empty option (`value=""`) keeps the default relevance ranking.
+
+### 9.4 — Caveat: sorting numbers stored as strings
+
+For sorting to behave numerically, the field must be a **number** in Algolia. If a field is stored as a string with commas (e.g. `"14,020"`), Algolia sorts it alphabetically — `"9,999"` would come after `"14,020"`. Use a Webflow **Number** field (not a Plain text field formatted to look like a number) for any field you plan to sort numerically.
+
+## Step 10 — Add the library to your Webflow page
 
 In Webflow → **Site Settings → Custom Code → Footer**:
 
@@ -155,7 +216,7 @@ In Webflow → **Site Settings → Custom Code → Footer**:
 
 **Always pin to a version tag** (e.g. `@v0.1.9`). Do not use `@main` — jsDelivr aggressively caches branch URLs.
 
-## Step 10 — Build the filter UI
+## Step 11 — Build the filter UI
 
 See the **HTML structure** and **Data attribute reference** below.
 
@@ -277,7 +338,7 @@ See the **HTML structure** and **Data attribute reference** below.
 
 | Attribute | Element | Description |
 |---|---|---|
-| `data-algolia-sort` | `<select>` | Each option's `value` should be the name of an Algolia index replica (e.g. `cars_price_asc`). |
+| `data-algolia-sort` | `<select>` (Webflow Form Select field) | Each option's `value` should be the name of an Algolia index replica (e.g. `cars_price_asc`). See [Step 9](#step-9--optional-configure-sorting) for full setup. Must be a native `<select>` — Webflow's navigation "Dropdown" component will not work. |
 
 ## Clear buttons
 
