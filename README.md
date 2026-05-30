@@ -211,10 +211,10 @@ For sorting to behave numerically, the field must be a **number** in Algolia. If
 In Webflow → **Site Settings → Custom Code → Footer**:
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/felixeallan/algolia-webflow-filter@v0.2.4/packages/library/dist/algolia-webflow.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/felixeallan/algolia-webflow-filter@v0.3.0/packages/library/dist/algolia-webflow.min.js"></script>
 ```
 
-**Always pin to a version tag** (e.g. `@v0.2.4`). Do not use `@main` — jsDelivr aggressively caches branch URLs.
+**Always pin to a version tag** (e.g. `@v0.3.0`). Do not use `@main` — jsDelivr aggressively caches branch URLs.
 
 ## Step 11 — Build the filter UI
 
@@ -377,11 +377,46 @@ For arrays / multi-reference fields where each value should render as a separate
 
 ## Pagination
 
+Two styles, can be used independently or together.
+
+### Previous / Next buttons
+
 | Attribute | Element | Description |
 |---|---|---|
 | `data-algolia-prev` | any | Click → previous page. Auto-disabled on first page. |
 | `data-algolia-next` | any | Click → next page. Auto-disabled on last page. |
 | `data-algolia-page-info` | any | Displays "Page X of Y" |
+
+### Numbered page buttons (with siblings, boundaries, and dots)
+
+| Attribute | Element | Description |
+|---|---|---|
+| `data-algolia-pages` | container | Where numbered page buttons get injected |
+| `data-algolia-page-button-template` | child of pages container | Cloned for each visible page number. Active page gets `data-active=""` for styling. |
+| `data-algolia-page-dots-template` | child of pages container | (Optional) Cloned to render the "..." separator when pages are skipped due to siblings/boundaries logic. |
+| `data-algolia-page-siblings="2,1,1,0"` | pages container | Number of pages shown on each side of the current page. Comma-separated for Webflow breakpoints (Desktop, Tablet, Landscape, Portrait). Default `1`. Single value (`"1"`) applies everywhere. |
+| `data-algolia-page-boundaries="1,1,1,0"` | pages container | Number of pages always shown at the start and end of the pagination. Same comma-separated breakpoint syntax. Default `1`. |
+
+Example:
+
+```html
+<div
+  data-algolia-pages
+  data-algolia-page-siblings="2,1,1,0"
+  data-algolia-page-boundaries="1,1,1,0"
+>
+  <button data-algolia-page-button-template class="page-btn">1</button>
+  <span data-algolia-page-dots-template class="page-dots">…</span>
+</div>
+```
+
+Style the active page in Webflow's custom CSS:
+
+```css
+[data-algolia-page-item][data-active] { background: #6c2bd9; color: white; }
+```
+
+The page list re-renders automatically on window resize so the responsive siblings/boundaries kick in correctly.
 
 ## Active filter tags
 
@@ -493,7 +528,7 @@ In Algolia → your index → **Manage index → Clear index** → type `CLEAR`.
 When a new version is released, update the version tag in the script URL:
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/felixeallan/algolia-webflow-filter@v0.2.4/packages/library/dist/algolia-webflow.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/felixeallan/algolia-webflow-filter@v0.3.0/packages/library/dist/algolia-webflow.min.js"></script>
 ```
 
 Then **hard refresh** (Cmd/Ctrl+Shift+R) to bypass the browser cache.
