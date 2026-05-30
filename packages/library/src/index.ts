@@ -300,6 +300,7 @@ function render(instance: AlgoliaInstance, results: SearchResults): void {
 
   renderTags(instance)
   renderPages(instance, results.page, results.nbPages)
+  syncFilterAllStates(instance)
 
   results.hits.forEach((hit) => {
     let itemRoot: HTMLElement
@@ -401,6 +402,17 @@ function forceFilterState(el: HTMLElement, checked: boolean): void {
   const input = getInput(el)
   if (input) input.checked = checked
   syncWebflowVisual(el, checked)
+}
+
+// Activate "filter all" elements when their group has no selections
+function syncFilterAllStates(instance: AlgoliaInstance): void {
+  const { wrapper } = instance
+  wrapper.querySelectorAll<HTMLElement>('[data-algolia-filter-all]').forEach((el) => {
+    const attr = el.getAttribute('data-algolia-filter-all')!
+    const set = instance.filters.get(attr)
+    const isEmpty = !set || set.size === 0
+    forceFilterState(el, isEmpty)
+  })
 }
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
@@ -519,6 +531,37 @@ function initInstance(wrapper: HTMLElement): void {
 
         instance.page = 0
         search()
+      })
+    }
+  })
+
+  // "Filter all" elements — clear the group on click/check
+  wrapper.querySelectorAll<HTMLElement>('[data-algolia-filter-all]').forEach((el) => {
+    const attribute = el.getAttribute('data-algolia-filter-all')!
+    const input = getInput(el)
+
+    const applyAll = () => {
+      instance.filters.get(attribute)?.clear()
+      wrapper.querySelectorAll<HTMLElement>(`[data-algolia-filter="${attribute}"]`)
+        .forEach((other) => forceFilterState(other, false))
+      instance.page = 0
+      search()
+    }
+
+    if (input) {
+      input.addEventListener('change', () => {
+        if (input.checked) {
+          applyAll()
+        } else {
+          // Don't allow unchecking "All" — re-check it
+          input.checked = true
+          syncWebflowVisual(el, true)
+        }
+      })
+    } else {
+      el.addEventListener('click', (e) => {
+        e.preventDefault()
+        applyAll()
       })
     }
   })
