@@ -284,7 +284,9 @@ function render(instance: AlgoliaInstance, results: SearchResults): void {
 
   // Scroll to anchor on filter/search change (skip first render)
   if (instance.hasRendered) {
-    const anchor = wrapper.querySelector<HTMLElement>('[data-algolia-scroll-anchor]')
+    const anchor =
+      wrapper.querySelector<HTMLElement>('[data-algolia-scroll-anchor]') ??
+      document.querySelector<HTMLElement>('[data-algolia-scroll-anchor]')
     anchor?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
   instance.hasRendered = true
