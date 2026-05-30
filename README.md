@@ -211,10 +211,10 @@ For sorting to behave numerically, the field must be a **number** in Algolia. If
 In Webflow → **Site Settings → Custom Code → Footer**:
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/felixeallan/algolia-webflow-filter@v0.3.1/packages/library/dist/algolia-webflow.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/felixeallan/algolia-webflow-filter@v0.3.2/packages/library/dist/algolia-webflow.min.js"></script>
 ```
 
-**Always pin to a version tag** (e.g. `@v0.3.1`). Do not use `@main` — jsDelivr aggressively caches branch URLs.
+**Always pin to a version tag** (e.g. `@v0.3.2`). Do not use `@main` — jsDelivr aggressively caches branch URLs.
 
 ## Step 11 — Build the filter UI
 
@@ -505,6 +505,32 @@ Stored as the option's name (e.g. `"White"`), not its internal ID. Use the name 
 
 The wrapping `.card_item` hides entirely if the field is empty.
 
+## Setting a default active filter
+
+On page load, the library reads the initial `checked` / `selected` state of inputs and applies it as the starting filter state.
+
+**Default to "All"** — just add `data-algolia-filter-all="attr"` to the All option. It auto-activates whenever no specific filter is selected, including the initial page load. No `checked` attribute needed.
+
+```html
+<label data-algolia-filter-all="car-brand">
+  <input type="radio" name="brand">
+  <span>All brands</span>
+</label>
+```
+
+**Default to a specific filter** — add `checked` to the input. Either in HTML or by toggling **Default state: Checked** in Webflow Designer's element settings.
+
+```html
+<label data-algolia-filter="car-brand" data-algolia-value="Quasar">
+  <input type="radio" name="brand" checked>
+  <span>Quasar</span>
+</label>
+```
+
+Same works for `<option selected>` inside a `data-algolia-filter-select` dropdown.
+
+**Priority:** URL state (if `data-algolia-url-state` is on the wrapper and the URL contains filter params) > HTML defaults > nothing.
+
 ---
 
 # Operations
@@ -529,7 +555,7 @@ In Algolia → your index → **Manage index → Clear index** → type `CLEAR`.
 When a new version is released, update the version tag in the script URL:
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/felixeallan/algolia-webflow-filter@v0.3.1/packages/library/dist/algolia-webflow.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/felixeallan/algolia-webflow-filter@v0.3.2/packages/library/dist/algolia-webflow.min.js"></script>
 ```
 
 Then **hard refresh** (Cmd/Ctrl+Shift+R) to bypass the browser cache.
