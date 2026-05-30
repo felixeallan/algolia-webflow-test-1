@@ -456,7 +456,8 @@ function initInstance(wrapper: HTMLElement): void {
   }
 
   const search = () => runSearch(instance)
-  const debouncedSearch = debounce(search, 300)
+  const debounceMs = Number(wrapper.getAttribute('data-algolia-debounce') ?? 300)
+  const debouncedSearch = debounce(search, debounceMs)
 
   // Search input
   const searchInput = wrapper.querySelector<HTMLInputElement>('[data-algolia-search]')
