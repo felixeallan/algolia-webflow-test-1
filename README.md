@@ -211,10 +211,10 @@ For sorting to behave numerically, the field must be a **number** in Algolia. If
 In Webflow → **Site Settings → Custom Code → Footer**:
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/felixeallan/algolia-webflow-filter@v0.3.4/packages/library/dist/algolia-webflow.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/felixeallan/algolia-webflow-filter@v0.3.5/packages/library/dist/algolia-webflow.min.js"></script>
 ```
 
-**Always pin to a version tag** (e.g. `@v0.3.4`). Do not use `@main` — jsDelivr aggressively caches branch URLs.
+**Always pin to a version tag** (e.g. `@v0.3.5`). Do not use `@main` — jsDelivr aggressively caches branch URLs.
 
 ## Step 11 — Build the filter UI
 
@@ -321,6 +321,7 @@ See the **HTML structure** and **Data attribute reference** below.
 | `data-hits-per-page="12"` | wrapper | Number of results per page (default 12) |
 | `data-algolia-url-state` | wrapper | (optional) Sync filters/search/page to URL params for shareable links |
 | `data-algolia-debounce="300"` | wrapper | (optional) Debounce delay in milliseconds before search/range inputs fire a search. Default `300`. Higher values reduce API calls for fast typers. |
+| `data-algolia-stagger="50"` | wrapper | (optional) Delay in milliseconds between each result item's entrance animation (fade in + slide up). Default `0` (no animation). Suggested: `30–60` subtle, `80–120` more visible. |
 
 ## Search
 
@@ -557,7 +558,7 @@ In Algolia → your index → **Manage index → Clear index** → type `CLEAR`.
 When a new version is released, update the version tag in the script URL:
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/felixeallan/algolia-webflow-filter@v0.3.4/packages/library/dist/algolia-webflow.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/felixeallan/algolia-webflow-filter@v0.3.5/packages/library/dist/algolia-webflow.min.js"></script>
 ```
 
 Then **hard refresh** (Cmd/Ctrl+Shift+R) to bypass the browser cache.
