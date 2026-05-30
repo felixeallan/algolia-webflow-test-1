@@ -12,6 +12,7 @@ export interface AlgoliaInstance {
   sortIndex: string
   urlState: boolean
   filterAttributes: Set<string>
+  hasRendered: boolean
   wrapper: HTMLElement
 }
 

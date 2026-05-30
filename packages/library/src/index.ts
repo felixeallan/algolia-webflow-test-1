@@ -281,6 +281,13 @@ function render(instance: AlgoliaInstance, results: SearchResults): void {
 
     list.appendChild(itemRoot)
   })
+
+  // Scroll to anchor on filter/search change (skip first render)
+  if (instance.hasRendered) {
+    const anchor = wrapper.querySelector<HTMLElement>('[data-algolia-scroll-anchor]')
+    anchor?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+  instance.hasRendered = true
 }
 
 // ─── Debounce ─────────────────────────────────────────────────────────────────
@@ -336,6 +343,7 @@ function initInstance(wrapper: HTMLElement): void {
     ranges: new Map(),
     sortIndex: '',
     urlState: wrapper.hasAttribute('data-algolia-url-state'),
+    hasRendered: false,
     filterAttributes: new Set([
       ...[...wrapper.querySelectorAll('[data-algolia-filter]')]
         .map((el) => el.getAttribute('data-algolia-filter')!),
