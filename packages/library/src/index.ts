@@ -109,6 +109,86 @@ function readUrlState(instance: AlgoliaInstance, wrapper: HTMLElement): void {
   })
 }
 
+// ─── Numbered pagination ──────────────────────────────────────────────────────
+
+function getResponsiveValue(spec: string | null, fallback: number): number {
+  if (!spec) return fallback
+  const parts = spec.split(',').map((s) => Number(s.trim()))
+  const w = typeof window !== 'undefined' ? window.innerWidth : 1200
+  let idx: number
+  if (w > 991) idx = 0
+  else if (w > 767) idx = 1
+  else if (w > 477) idx = 2
+  else idx = 3
+  // Fall back to the last defined value if this breakpoint isn't specified
+  for (let i = idx; i >= 0; i--) {
+    if (!Number.isNaN(parts[i])) return parts[i]
+  }
+  return fallback
+}
+
+function getPageList(current: number, total: number, siblings: number, boundaries: number): Array<number | 'dots'> {
+  const set = new Set<number>()
+  for (let i = 1; i <= Math.min(boundaries, total); i++) set.add(i)
+  for (let i = Math.max(1, total - boundaries + 1); i <= total; i++) set.add(i)
+  for (let i = Math.max(1, current - siblings); i <= Math.min(total, current + siblings); i++) set.add(i)
+
+  const sorted = [...set].sort((a, b) => a - b)
+  const result: Array<number | 'dots'> = []
+  for (let i = 0; i < sorted.length; i++) {
+    if (i > 0 && sorted[i] - sorted[i - 1] > 1) result.push('dots')
+    result.push(sorted[i])
+  }
+  return result
+}
+
+function renderPages(instance: AlgoliaInstance, currentPage: number, totalPages: number): void {
+  const { wrapper } = instance
+  const container = wrapper.querySelector<HTMLElement>('[data-algolia-pages]')
+  if (!container) return
+
+  const buttonTemplate = container.querySelector<HTMLElement>('[data-algolia-page-button-template]')
+  if (!buttonTemplate) return
+  const dotsTemplate = container.querySelector<HTMLElement>('[data-algolia-page-dots-template]')
+
+  buttonTemplate.style.display = 'none'
+  if (dotsTemplate) dotsTemplate.style.display = 'none'
+  container.querySelectorAll('[data-algolia-page-item]').forEach((el) => el.remove())
+
+  if (totalPages <= 0) return
+
+  const siblings = getResponsiveValue(container.getAttribute('data-algolia-page-siblings'), 1)
+  const boundaries = getResponsiveValue(container.getAttribute('data-algolia-page-boundaries'), 1)
+  const items = getPageList(currentPage + 1, totalPages, siblings, boundaries)
+
+  items.forEach((item) => {
+    if (item === 'dots') {
+      if (!dotsTemplate) return
+      const dots = dotsTemplate.cloneNode(true) as HTMLElement
+      dots.removeAttribute('data-algolia-page-dots-template')
+      dots.setAttribute('data-algolia-page-item', '')
+      dots.style.display = ''
+      container.appendChild(dots)
+      return
+    }
+
+    const btn = buttonTemplate.cloneNode(true) as HTMLElement
+    btn.removeAttribute('data-algolia-page-button-template')
+    btn.setAttribute('data-algolia-page-item', '')
+    btn.style.display = ''
+    btn.textContent = String(item)
+    btn.toggleAttribute('data-active', item === currentPage + 1)
+
+    btn.addEventListener('click', (e) => {
+      e.preventDefault()
+      instance.page = item - 1
+      runSearch(instance)
+    })
+
+    container.appendChild(btn)
+  })
+}
+
 // ─── Tags ─────────────────────────────────────────────────────────────────────
 
 function renderTags(instance: AlgoliaInstance): void {
@@ -219,6 +299,7 @@ function render(instance: AlgoliaInstance, results: SearchResults): void {
   if (nextBtn) nextBtn.disabled = results.page >= results.nbPages - 1
 
   renderTags(instance)
+  renderPages(instance, results.page, results.nbPages)
 
   results.hits.forEach((hit) => {
     let itemRoot: HTMLElement
@@ -548,6 +629,11 @@ function initInstance(wrapper: HTMLElement): void {
     instance.page++
     search()
   })
+
+  // Re-render numbered pagination on resize so responsive siblings/boundaries update
+  if (wrapper.querySelector('[data-algolia-pages]')) {
+    window.addEventListener('resize', debounce(() => search(), 200))
+  }
 
   // Initial search — restore URL state first if enabled
   if (instance.urlState) readUrlState(instance, wrapper)
