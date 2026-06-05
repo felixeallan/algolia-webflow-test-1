@@ -211,10 +211,10 @@ For sorting to behave numerically, the field must be a **number** in Algolia. If
 In Webflow → **Site Settings → Custom Code → Footer**:
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/felixeallan/algolia-webflow-filter@v0.8.0/packages/library/dist/algolia-webflow.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/felixeallan/algolia-webflow-filter@v0.8.1/packages/library/dist/algolia-webflow.min.js"></script>
 ```
 
-**Always pin to a version tag** (e.g. `@v0.8.0`). Do not use `@main` — jsDelivr aggressively caches branch URLs.
+**Always pin to a version tag** (e.g. `@v0.8.1`). Do not use `@main` — jsDelivr aggressively caches branch URLs.
 
 ## Step 11 — Build the filter UI
 
@@ -737,13 +737,13 @@ Click the badge to open the diagnostic panel. Each issue is clickable and scroll
 
 | Category | Checks |
 |---|---|
-| **Wrapper** | `[data-algolia]` exists; required `data-algolia-app-id`, `data-algolia-api-key`, `data-algolia-index` present |
-| **Templates** | `[data-algolia-list]` and `[data-algolia-template]` both exist inside the wrapper |
-| **Filters** | Every `data-algolia-filter` has a `data-algolia-value`; radios in the same filter group share a `name` attribute |
+| **Wrapper** | `[data-algolia]` exists; required `data-algolia-app-id`, `data-algolia-api-key`, `data-algolia-index` present; `data-algolia-match-mode` is `"and"` or `"or"` |
+| **Templates** | `[data-algolia-list]` and `[data-algolia-template]` both exist; template contains at least one `data-algolia-bind`; `data-algolia-attr` always paired with `data-algolia-bind`; `data-algolia-bind` / `-hide-empty` not left with empty values; `data-algolia-repeat-item` lives inside a `data-algolia-repeat` |
+| **Filters** | `data-algolia-filter` paired with `data-algolia-value`; orphan `data-algolia-value` (no parent filter) flagged; radio groups consistent — if any radio is wired up, every radio in that `name` group must be too (`data-algolia-filter` or `data-algolia-filter-all`); radios in the same filter share a `name`; non-empty values for `data-algolia-filter-select` / `-filter-all` |
 | **Range** | Every `data-algolia-range-min="attr"` has a matching `data-algolia-range-max="attr"` (and vice versa) |
 | **Range Slider** | Has either static `min`/`max` OR `auto-bounds`; track + both handles present; matching number inputs in the wrapper |
-| **Pagination** | Load More not combined with numbered Pages; `[data-algolia-pages]` has a button template |
-| **Tags** | `[data-algolia-tags]` has a `[data-algolia-tag-template]` child |
+| **Pagination** | Load More not combined with numbered Pages; `[data-algolia-pages]` has a button template; page templates live inside `[data-algolia-pages]` |
+| **Tags** | `[data-algolia-tags]` has a `[data-algolia-tag-template]` child; tag children (`-tag-label`, `-tag-remove`) live inside the template |
 
 ## Staging-only by design
 
@@ -773,7 +773,7 @@ In Algolia → your index → **Manage index → Clear index** → type `CLEAR`.
 When a new version is released, update the version tag in the script URL:
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/felixeallan/algolia-webflow-filter@v0.8.0/packages/library/dist/algolia-webflow.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/felixeallan/algolia-webflow-filter@v0.8.1/packages/library/dist/algolia-webflow.min.js"></script>
 ```
 
 Then **hard refresh** (Cmd/Ctrl+Shift+R) to bypass the browser cache.

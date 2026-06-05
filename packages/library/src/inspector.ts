@@ -53,28 +53,145 @@ function audit(): Issue[] {
       issues.push({ level: 'error', category: 'Templates', message: 'No [data-algolia-template] element found. Add this to the element that should be cloned for each result.', element: wrapper })
     }
 
-    // Filters
+    // Filter pair: data-algolia-filter requires data-algolia-value
     wrapper.querySelectorAll<HTMLElement>('[data-algolia-filter]').forEach((el) => {
+      const attr = el.getAttribute('data-algolia-filter')
+      if (!attr) {
+        issues.push({ level: 'error', category: 'Filters', message: 'Element has data-algolia-filter with an empty value. Set it to the Algolia field slug, e.g. data-algolia-filter="car-brand".', element: el })
+        return
+      }
       if (!el.hasAttribute('data-algolia-value')) {
-        const attr = el.getAttribute('data-algolia-filter')
         issues.push({ level: 'error', category: 'Filters', message: `Filter element for "${attr}" is missing data-algolia-value.`, element: el })
       }
     })
 
-    // Radio groups should share a name attribute
-    const radioNames = new Map<string, Set<string>>()
+    // Orphan data-algolia-value (no companion data-algolia-filter)
+    // Skip filter-all elements — they intentionally have no value.
+    wrapper.querySelectorAll<HTMLElement>('[data-algolia-value]').forEach((el) => {
+      if (!el.hasAttribute('data-algolia-filter') && !el.hasAttribute('data-algolia-filter-all')) {
+        issues.push({ level: 'error', category: 'Filters', message: 'Element has data-algolia-value but no data-algolia-filter. The value will be ignored.', element: el })
+      }
+    })
+
+    // Radio-group consistency
+    //   For each radio name group inside the wrapper, if ANY radio in the
+    //   group is an Algolia filter (data-algolia-filter or -filter-all),
+    //   ALL radios in that group should also be one — otherwise the orphan
+    //   radio is in the same native group but won't trigger any search.
+    const radiosByName = new Map<string, HTMLInputElement[]>()
+    wrapper.querySelectorAll<HTMLInputElement>('input[type="radio"][name]').forEach((input) => {
+      const name = input.getAttribute('name')!
+      if (!radiosByName.has(name)) radiosByName.set(name, [])
+      radiosByName.get(name)!.push(input)
+    })
+    radiosByName.forEach((inputs, name) => {
+      const decorated = inputs.filter((input) =>
+        input.closest('[data-algolia-filter], [data-algolia-filter-all]')
+      )
+      // Mixed group — at least one decorated, at least one not
+      if (decorated.length > 0 && decorated.length < inputs.length) {
+        const orphan = inputs.find((input) => !input.closest('[data-algolia-filter], [data-algolia-filter-all]'))
+        issues.push({
+          level: 'error',
+          category: 'Filters',
+          message: `Radio button in group "${name}" is missing data-algolia-filter (or data-algolia-filter-all). Other radios in this group are wired up but this one isn't, so selecting it clears the filter without applying anything.`,
+          element: orphan ?? null,
+        })
+      }
+    })
+
+    // Radio group same-name check — radios sharing a filter attr should share a name
+    const filterRadioNames = new Map<string, Set<string>>()
     wrapper.querySelectorAll<HTMLElement>('[data-algolia-filter]').forEach((el) => {
       const input = el.querySelector<HTMLInputElement>('input[type="radio"]')
       if (!input) return
       const attr = el.getAttribute('data-algolia-filter')!
-      if (!radioNames.has(attr)) radioNames.set(attr, new Set())
-      radioNames.get(attr)!.add(input.getAttribute('name') ?? '')
+      if (!filterRadioNames.has(attr)) filterRadioNames.set(attr, new Set())
+      filterRadioNames.get(attr)!.add(input.getAttribute('name') ?? '')
     })
-    radioNames.forEach((names, attr) => {
+    filterRadioNames.forEach((names, attr) => {
       if (names.size > 1 || names.has('')) {
         issues.push({ level: 'warning', category: 'Filters', message: `Radio buttons for filter "${attr}" don't all share the same name attribute. Browser native mutual-exclusion needs a matching name.` })
       }
     })
+
+    // data-algolia-filter-select: empty attribute value
+    wrapper.querySelectorAll<HTMLElement>('[data-algolia-filter-select]').forEach((el) => {
+      if (!el.getAttribute('data-algolia-filter-select')) {
+        issues.push({ level: 'error', category: 'Filters', message: 'Element has data-algolia-filter-select with an empty value. Set it to the Algolia field slug.', element: el })
+      }
+    })
+
+    // data-algolia-filter-all: empty attribute value
+    wrapper.querySelectorAll<HTMLElement>('[data-algolia-filter-all]').forEach((el) => {
+      if (!el.getAttribute('data-algolia-filter-all')) {
+        issues.push({ level: 'error', category: 'Filters', message: 'Element has data-algolia-filter-all with an empty value. Set it to the filter group name, e.g. data-algolia-filter-all="car-brand".', element: el })
+      }
+    })
+
+    // Bind pair: data-algolia-attr requires data-algolia-bind
+    wrapper.querySelectorAll<HTMLElement>('[data-algolia-attr]').forEach((el) => {
+      if (!el.hasAttribute('data-algolia-bind')) {
+        issues.push({ level: 'error', category: 'Templates', message: 'Element has data-algolia-attr but no data-algolia-bind to read the source field from.', element: el })
+      }
+    })
+
+    // data-algolia-bind: empty value
+    wrapper.querySelectorAll<HTMLElement>('[data-algolia-bind]').forEach((el) => {
+      if (!el.getAttribute('data-algolia-bind')) {
+        issues.push({ level: 'error', category: 'Templates', message: 'Element has data-algolia-bind with an empty value. Set it to the field slug to bind, e.g. data-algolia-bind="name".', element: el })
+      }
+    })
+
+    // Template should contain at least one data-algolia-bind (otherwise it'll render empty)
+    const template = wrapper.querySelector<HTMLElement>('[data-algolia-template]')
+    if (template && !template.querySelector('[data-algolia-bind]')) {
+      issues.push({ level: 'warning', category: 'Templates', message: '[data-algolia-template] has no [data-algolia-bind] elements inside. Each result will render as an empty clone.', element: template })
+    }
+
+    // data-algolia-hide-empty: empty value
+    wrapper.querySelectorAll<HTMLElement>('[data-algolia-hide-empty]').forEach((el) => {
+      if (!el.getAttribute('data-algolia-hide-empty')) {
+        issues.push({ level: 'error', category: 'Templates', message: 'Element has data-algolia-hide-empty with an empty value. Set it to the field slug to check.', element: el })
+      }
+    })
+
+    // Repeat: data-algolia-repeat-item must be inside data-algolia-repeat
+    wrapper.querySelectorAll<HTMLElement>('[data-algolia-repeat-item]').forEach((el) => {
+      if (!el.closest('[data-algolia-repeat]')) {
+        issues.push({ level: 'error', category: 'Templates', message: '[data-algolia-repeat-item] must be inside a [data-algolia-repeat] container.', element: el })
+      }
+    })
+    wrapper.querySelectorAll<HTMLElement>('[data-algolia-repeat]').forEach((el) => {
+      if (!el.querySelector('[data-algolia-repeat-item]')) {
+        issues.push({ level: 'error', category: 'Templates', message: '[data-algolia-repeat] container needs a [data-algolia-repeat-item] child.', element: el })
+      }
+      if (!el.getAttribute('data-algolia-repeat')) {
+        issues.push({ level: 'error', category: 'Templates', message: 'Element has data-algolia-repeat with an empty value. Set it to the array field to iterate.', element: el })
+      }
+    })
+
+    // Tag children must be inside a tag template
+    wrapper.querySelectorAll<HTMLElement>('[data-algolia-tag-label], [data-algolia-tag-remove]').forEach((el) => {
+      if (!el.closest('[data-algolia-tag-template], [data-algolia-tag-item]')) {
+        const which = el.hasAttribute('data-algolia-tag-label') ? 'data-algolia-tag-label' : 'data-algolia-tag-remove'
+        issues.push({ level: 'warning', category: 'Tags', message: `${which} should be inside a [data-algolia-tag-template] element.`, element: el })
+      }
+    })
+
+    // Page templates must be inside [data-algolia-pages]
+    wrapper.querySelectorAll<HTMLElement>('[data-algolia-page-button-template], [data-algolia-page-dots-template]').forEach((el) => {
+      if (!el.closest('[data-algolia-pages]')) {
+        const which = el.hasAttribute('data-algolia-page-button-template') ? 'data-algolia-page-button-template' : 'data-algolia-page-dots-template'
+        issues.push({ level: 'warning', category: 'Pagination', message: `${which} should be inside a [data-algolia-pages] container.`, element: el })
+      }
+    })
+
+    // Match mode value validation
+    const matchMode = wrapper.getAttribute('data-algolia-match-mode')
+    if (matchMode !== null && matchMode !== '' && !['and', 'or'].includes(matchMode.toLowerCase())) {
+      issues.push({ level: 'warning', category: 'Wrapper', message: `data-algolia-match-mode is "${matchMode}" but should be either "and" or "or". Defaulting to "and".`, element: wrapper })
+    }
 
     // Range pairs
     const ranges = new Map<string, { min?: HTMLElement; max?: HTMLElement }>()
