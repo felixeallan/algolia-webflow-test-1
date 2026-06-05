@@ -577,6 +577,35 @@ Same works for `<option selected>` inside a `data-algolia-filter-select` dropdow
 
 ---
 
+# Using this template for multiple projects
+
+You do **not** need to fork or duplicate this repository for every new Webflow site you build with it. Each piece has its own reusability story:
+
+| Piece | Reusable across projects? | What to do for each new project |
+|---|---|---|
+| **Client library** (`<script>` tag) | ✅ Fully reusable | Paste the same official jsDelivr `<script>` tag. Each site provides its own credentials via `data-algolia-app-id`, `data-algolia-api-key`, `data-algolia-index`. |
+| **Webhook worker** (Cloudflare) | ✅ Code is reusable | Create a separate Cloudflare Worker per project and paste the same `apps/webhook-worker/src/index.js`. Each Worker gets its own environment variables (different Algolia index + Webflow collection ID). |
+| **Sync app** (Webflow Cloud) | ✅ Code is reusable | Create a separate Webflow Cloud app per Webflow site. You can point multiple Webflow Cloud apps at the **same template repository** — each app has isolated environment variables, so the same code drives different Algolia indexes and Webflow collections. |
+
+**Per-project resources you always need to create fresh:**
+
+- A dedicated Algolia index
+- A dedicated Webflow Cloud app (with its own environment variables)
+- A dedicated Cloudflare Worker (with its own environment variables)
+- Webflow webhooks pointing at that project's Cloudflare Worker URL
+
+## When you should fork the repository
+
+Use the official template directly when the code works for you as-is. Fork (or create your own copy via **Use this template**) only if you need to:
+
+- **Modify the sync logic** — e.g. transform fields differently for a specific project, add custom enrichment, change how reference fields are flattened.
+- **Pin different versions per project** — e.g. keep one client on an older sync deployment while another tracks the latest.
+- **Keep an isolated commit history** for a specific client or site (e.g. for audit or handover reasons).
+
+In short: **shared code, isolated infrastructure**. One template repository can power any number of Webflow projects as long as the sync logic doesn't need to change.
+
+---
+
 # Operations
 
 ## Re-running the sync (after schema changes)
