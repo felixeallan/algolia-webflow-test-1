@@ -405,7 +405,7 @@ Appends the next page of results to the existing list without replacing it. Auto
 <button data-algolia-load-more>Load more</button>
 ```
 
-> **Note:** Algolia caps pagination at 1,000 total results by default. If you need more, increase `paginationLimitedTo` in Algolia → your index → Configuration → Pagination. Also keep `data-hits-per-page` reasonable (12–24) to avoid accumulating too many DOM nodes.
+> **Note:** Algolia caps pagination at 1,000 total results by default. If you need more, increase `paginationLimitedTo` in Algolia → your index → Configuration → Pagination. Also keep `data-algolia-hits-per-page` reasonable (12–24) to avoid accumulating too many DOM nodes.
 
 ### Previous / Next buttons
 
