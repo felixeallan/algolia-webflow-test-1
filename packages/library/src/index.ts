@@ -414,6 +414,169 @@ function render(instance: AlgoliaInstance, results: SearchResults, append = fals
   }
 }
 
+// ─── Range slider ─────────────────────────────────────────────────────────────
+
+function formatNumber(value: number, locale: string | null): string {
+  if (locale === null) return String(value)
+  try {
+    return new Intl.NumberFormat(locale || undefined, { maximumFractionDigits: 0 }).format(value)
+  } catch {
+    return String(value)
+  }
+}
+
+async function initRangeSlider(slider: HTMLElement, instance: AlgoliaInstance): Promise<void> {
+  const attribute = slider.getAttribute('data-algolia-range-slider')
+  if (!attribute) return
+
+  const step = Number(slider.getAttribute('data-algolia-range-slider-step')) || 1
+  const autoBounds = slider.hasAttribute('data-algolia-range-slider-auto-bounds')
+  // null = no formatting; '' = browser default; 'fr-FR' = forced locale
+  const locale = slider.getAttribute('data-algolia-range-slider-format')
+
+  const staticMinAttr = slider.getAttribute('data-algolia-range-slider-min')
+  const staticMaxAttr = slider.getAttribute('data-algolia-range-slider-max')
+  let boundsMin = staticMinAttr !== null ? Number(staticMinAttr) : NaN
+  let boundsMax = staticMaxAttr !== null ? Number(staticMaxAttr) : NaN
+
+  if (autoBounds && (Number.isNaN(boundsMin) || Number.isNaN(boundsMax))) {
+    try {
+      const client = liteClient(instance.appId, instance.apiKey)
+      const res = await client.search({
+        requests: [{ indexName: instance.indexName, query: '', hitsPerPage: 0, facets: [attribute] }],
+      })
+      const stats = (res.results[0] as { facets_stats?: Record<string, { min: number; max: number }> })
+        .facets_stats?.[attribute]
+      if (stats) {
+        if (Number.isNaN(boundsMin)) boundsMin = stats.min
+        if (Number.isNaN(boundsMax)) boundsMax = stats.max
+      } else {
+        console.warn(`[algolia-webflow] No facets_stats for "${attribute}". Add it as a numeric facet in Algolia.`)
+      }
+    } catch (err) {
+      console.warn('[algolia-webflow] auto-bounds query failed', err)
+    }
+  }
+
+  if (!Number.isFinite(boundsMin) || !Number.isFinite(boundsMax) || boundsMin >= boundsMax) {
+    console.warn(`[algolia-webflow] Range slider "${attribute}" has no valid bounds; falling back to 0–100`)
+    boundsMin = 0
+    boundsMax = 100
+  }
+
+  const track = slider.querySelector<HTMLElement>('[data-algolia-range-slider-track]')
+  const fill = slider.querySelector<HTMLElement>('[data-algolia-range-slider-fill]')
+  const minHandle = slider.querySelector<HTMLElement>('[data-algolia-range-slider-handle="min"]')
+  const maxHandle = slider.querySelector<HTMLElement>('[data-algolia-range-slider-handle="max"]')
+  const minDisplay = slider.querySelector<HTMLElement>('[data-algolia-range-slider-display="min"]')
+  const maxDisplay = slider.querySelector<HTMLElement>('[data-algolia-range-slider-display="max"]')
+
+  if (!track || !minHandle || !maxHandle) {
+    console.warn(`[algolia-webflow] Range slider "${attribute}" missing track or handle elements`)
+    return
+  }
+
+  const { wrapper } = instance
+  const minInput = wrapper.querySelector<HTMLInputElement>(`[data-algolia-range-min="${attribute}"]`)
+  const maxInput = wrapper.querySelector<HTMLInputElement>(`[data-algolia-range-max="${attribute}"]`)
+
+  let currentMin = minInput && minInput.value !== '' ? Number(minInput.value) : boundsMin
+  let currentMax = maxInput && maxInput.value !== '' ? Number(maxInput.value) : boundsMax
+  currentMin = Math.max(boundsMin, Math.min(currentMin, boundsMax))
+  currentMax = Math.max(boundsMin, Math.min(currentMax, boundsMax))
+  if (currentMax < currentMin) currentMax = currentMin
+
+  // Touch dragging should not scroll the page
+  minHandle.style.touchAction = 'none'
+  maxHandle.style.touchAction = 'none'
+
+  const valueToPct = (v: number): number => ((v - boundsMin) / (boundsMax - boundsMin)) * 100
+
+  const paint = (): void => {
+    const minPct = valueToPct(currentMin)
+    const maxPct = valueToPct(currentMax)
+    minHandle.style.left = minPct + '%'
+    maxHandle.style.left = maxPct + '%'
+    if (fill) {
+      fill.style.left = minPct + '%'
+      fill.style.width = (maxPct - minPct) + '%'
+    }
+    if (minDisplay) minDisplay.textContent = formatNumber(currentMin, locale)
+    if (maxDisplay) maxDisplay.textContent = formatNumber(currentMax, locale)
+  }
+
+  // Drive the underlying number inputs. Empty string when at the bound so the
+  // existing range listener clears that side of the filter (no spurious tag).
+  const commitToInputs = (): void => {
+    if (minInput) {
+      const newVal = currentMin === boundsMin ? '' : String(currentMin)
+      if (minInput.value !== newVal) {
+        minInput.value = newVal
+        minInput.dispatchEvent(new Event('input', { bubbles: true }))
+      }
+    }
+    if (maxInput) {
+      const newVal = currentMax === boundsMax ? '' : String(currentMax)
+      if (maxInput.value !== newVal) {
+        maxInput.value = newVal
+        maxInput.dispatchEvent(new Event('input', { bubbles: true }))
+      }
+    }
+  }
+
+  // Resync slider visuals when the underlying inputs change (typing or clear)
+  const resync = (): void => {
+    const newMin = minInput && minInput.value !== '' ? Number(minInput.value) : boundsMin
+    const newMax = maxInput && maxInput.value !== '' ? Number(maxInput.value) : boundsMax
+    if (Number.isNaN(newMin) || Number.isNaN(newMax)) return
+    currentMin = Math.max(boundsMin, Math.min(newMin, boundsMax))
+    currentMax = Math.max(boundsMin, Math.min(newMax, boundsMax))
+    if (currentMax < currentMin) currentMax = currentMin
+    paint()
+  }
+  minInput?.addEventListener('input', resync)
+  maxInput?.addEventListener('input', resync)
+  // Custom event dispatched by Clear buttons. We avoid 'input' there because
+  // Clear also runs its own search() and we don't want the debounced one too.
+  minInput?.addEventListener('algolia-range-reset', resync)
+  maxInput?.addEventListener('algolia-range-reset', resync)
+
+  const startDrag = (handle: HTMLElement, isMin: boolean) => (e: PointerEvent): void => {
+    e.preventDefault()
+    handle.setPointerCapture(e.pointerId)
+
+    const move = (ev: PointerEvent): void => {
+      const rect = track.getBoundingClientRect()
+      let pct = (ev.clientX - rect.left) / rect.width
+      pct = Math.max(0, Math.min(1, pct))
+      let value = boundsMin + pct * (boundsMax - boundsMin)
+      value = Math.round(value / step) * step
+      value = Math.max(boundsMin, Math.min(boundsMax, value))
+
+      if (isMin) currentMin = Math.min(value, currentMax)
+      else currentMax = Math.max(value, currentMin)
+      paint()
+      commitToInputs()
+    }
+
+    const up = (ev: PointerEvent): void => {
+      try { handle.releasePointerCapture(ev.pointerId) } catch { /* already released */ }
+      handle.removeEventListener('pointermove', move)
+      handle.removeEventListener('pointerup', up)
+      handle.removeEventListener('pointercancel', up)
+    }
+
+    handle.addEventListener('pointermove', move)
+    handle.addEventListener('pointerup', up)
+    handle.addEventListener('pointercancel', up)
+  }
+
+  minHandle.addEventListener('pointerdown', startDrag(minHandle, true))
+  maxHandle.addEventListener('pointerdown', startDrag(maxHandle, false))
+
+  paint()
+}
+
 // ─── Debounce ─────────────────────────────────────────────────────────────────
 
 function debounce<T extends (...args: unknown[]) => void>(fn: T, ms: number): T {
@@ -650,6 +813,13 @@ function initInstance(wrapper: HTMLElement): void {
     input.addEventListener('input', () => updateRange(attribute, 'max', input.value))
   })
 
+  // Range sliders (UI layer on top of the number inputs above)
+  wrapper.querySelectorAll<HTMLElement>('[data-algolia-range-slider]').forEach((slider) => {
+    initRangeSlider(slider, instance).catch((err) =>
+      console.warn('[algolia-webflow] range slider init failed', err)
+    )
+  })
+
   // Clear buttons
   wrapper.querySelectorAll<HTMLElement>('[data-algolia-clear]').forEach((btn) => {
     btn.addEventListener('click', (e) => {
@@ -666,7 +836,10 @@ function initInstance(wrapper: HTMLElement): void {
           .forEach((sel) => { sel.value = '' })
         wrapper.querySelectorAll<HTMLInputElement>(
           `[data-algolia-range-min="${attribute}"], [data-algolia-range-max="${attribute}"]`
-        ).forEach((input) => { input.value = '' })
+        ).forEach((input) => {
+          input.value = ''
+          input.dispatchEvent(new CustomEvent('algolia-range-reset'))
+        })
       } else {
         // Clear all filters, search and sort
         instance.filters.clear()
@@ -678,7 +851,10 @@ function initInstance(wrapper: HTMLElement): void {
         wrapper.querySelectorAll<HTMLSelectElement>('[data-algolia-filter-select]')
           .forEach((sel) => { sel.value = '' })
         wrapper.querySelectorAll<HTMLInputElement>('[data-algolia-range-min], [data-algolia-range-max]')
-          .forEach((input) => { input.value = '' })
+          .forEach((input) => {
+            input.value = ''
+            input.dispatchEvent(new CustomEvent('algolia-range-reset'))
+          })
         const searchInput = wrapper.querySelector<HTMLInputElement>('[data-algolia-search]')
         if (searchInput) searchInput.value = ''
         if (sortSelect) sortSelect.value = sortSelect.options[0]?.value ?? ''

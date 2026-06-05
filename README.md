@@ -211,10 +211,10 @@ For sorting to behave numerically, the field must be a **number** in Algolia. If
 In Webflow → **Site Settings → Custom Code → Footer**:
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/felixeallan/algolia-webflow-filter@v0.6.0/packages/library/dist/algolia-webflow.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/felixeallan/algolia-webflow-filter@v0.7.0/packages/library/dist/algolia-webflow.min.js"></script>
 ```
 
-**Always pin to a version tag** (e.g. `@v0.6.0`). Do not use `@main` — jsDelivr aggressively caches branch URLs.
+**Always pin to a version tag** (e.g. `@v0.7.0`). Do not use `@main` — jsDelivr aggressively caches branch URLs.
 
 ## Step 11 — Build the filter UI
 
@@ -344,6 +344,95 @@ See the **HTML structure** and **Data attribute reference** below.
 | `data-algolia-range-min="attr"` | `<input type="number">` | Lower bound of a numeric range filter. Leave empty for open-ended. Field must be a **number** in Algolia. |
 | `data-algolia-range-max="attr"` | `<input type="number">` | Upper bound of a numeric range filter. |
 | `data-algolia-range-label="Price"` | range input | (optional) Custom prefix used in the active filter tag for this range. Default tag shows just the value (`Any – 2000`); with this set it shows `Price: Any – 2000`. Add to either min or max input. |
+
+### Range slider (visual control on top of min/max inputs)
+
+A draggable two-handle slider that drives the existing `data-algolia-range-min` / `data-algolia-range-max` inputs. Use it alongside (or instead of) the number inputs — both stay in sync.
+
+| Attribute | Element | Description |
+|---|---|---|
+| `data-algolia-range-slider="attr"` | wrapper | Binds the slider to the same `attr` used by the number inputs. |
+| `data-algolia-range-slider-min="0"` | wrapper | Lower bound of the slider scale. Required unless `auto-bounds` is set. |
+| `data-algolia-range-slider-max="100000"` | wrapper | Upper bound of the slider scale. Required unless `auto-bounds` is set. |
+| `data-algolia-range-slider-auto-bounds` | wrapper | (optional) Fetch the real min/max from Algolia facet stats on init. Attribute must be a numeric facet in Algolia. Explicit `min`/`max` always wins over auto-detected values. |
+| `data-algolia-range-slider-step="100"` | wrapper | (optional) Snap increment. Default `1`. |
+| `data-algolia-range-slider-format` | wrapper | (optional) Format the display spans using the browser's locale (`1,234,567`). Add a BCP 47 language tag to force a locale (`data-algolia-range-slider-format="fr-FR"` → `1 234 567`). |
+| `data-algolia-range-slider-track` | child of wrapper | The bar element. |
+| `data-algolia-range-slider-fill` | child of track | (optional) The highlighted section between handles. Auto-positioned. |
+| `data-algolia-range-slider-handle="min"` | child of track | The lower handle (drag with mouse, touch, or pen). |
+| `data-algolia-range-slider-handle="max"` | child of track | The upper handle. |
+| `data-algolia-range-slider-display="min"` | any | Live text element showing the current lower value. Locale-formatted when `data-algolia-range-slider-format` is set. |
+| `data-algolia-range-slider-display="max"` | any | Live text element showing the current upper value. |
+
+> ⚠️ **The slider must coexist with `data-algolia-range-min` / `data-algolia-range-max` inputs for the same attribute** somewhere in the wrapper. The slider drives those inputs — they are the source of truth. You can hide them with `display:none` or `hidden` if you only want the slider visible.
+
+**Static bounds (recommended):**
+
+```html
+<div class="filter_block">
+  <!-- The number inputs the library reads. Keep visible for typing, or hide. -->
+  <input type="number" data-algolia-range-min="price-number-2" data-algolia-range-label="Price" placeholder="min">
+  <input type="number" data-algolia-range-max="price-number-2" placeholder="max">
+
+  <div class="rangeslider_wrapper"
+       data-algolia-range-slider="price-number-2"
+       data-algolia-range-slider-min="0"
+       data-algolia-range-slider-max="100000"
+       data-algolia-range-slider-step="100"
+       data-algolia-range-slider-format="en-US">
+
+    <div class="rangeslider_track" data-algolia-range-slider-track>
+      <div class="rangeslider_handle" data-algolia-range-slider-handle="min"></div>
+      <div class="rangeslider_handle" data-algolia-range-slider-handle="max"></div>
+      <div class="rangeslider_fill"  data-algolia-range-slider-fill></div>
+    </div>
+
+    <div class="range_values">
+      <div>$<span data-algolia-range-slider-display="min">0</span></div>
+      <div>$<span data-algolia-range-slider-display="max">100,000</span></div>
+    </div>
+  </div>
+</div>
+```
+
+**Auto-bounds (one less thing to configure):**
+
+```html
+<div class="rangeslider_wrapper"
+     data-algolia-range-slider="price-number-2"
+     data-algolia-range-slider-auto-bounds
+     data-algolia-range-slider-format>
+
+  <div class="rangeslider_track" data-algolia-range-slider-track>
+    <div class="rangeslider_handle" data-algolia-range-slider-handle="min"></div>
+    <div class="rangeslider_handle" data-algolia-range-slider-handle="max"></div>
+    <div class="rangeslider_fill"  data-algolia-range-slider-fill></div>
+  </div>
+
+  <div class="range_values">
+    <div>$<span data-algolia-range-slider-display="min"></span></div>
+    <div>$<span data-algolia-range-slider-display="max"></span></div>
+  </div>
+</div>
+```
+
+**Tradeoff to know:** auto-bounds fires one extra Algolia query on page load and uses the real min/max from your data (e.g. `$12,347 – $487,250`). Static bounds let you round to clean numbers (`$0 – $500,000`) but you have to maintain them as your data grows.
+
+#### Required Webflow styling for the slider
+
+The library only positions the handles and fill via `style.left` / `style.width` percentages — visual styling is up to you. Minimum CSS to make the slider work visually:
+
+```css
+.rangeslider_track    { position: relative; height: 4px; background: #e5e7eb; }
+.rangeslider_handle   { position: absolute; top: 50%; width: 16px; height: 16px;
+                         margin-left: -8px; transform: translateY(-50%);
+                         background: #6c2bd9; border-radius: 50%; cursor: grab; z-index: 2; }
+.rangeslider_handle:active { cursor: grabbing; }
+.rangeslider_fill     { position: absolute; top: 0; height: 100%;
+                         background: #6c2bd9; z-index: 1; }
+```
+
+Adjust colors and sizing to match your design.
 
 ## Sort
 
@@ -628,7 +717,7 @@ In Algolia → your index → **Manage index → Clear index** → type `CLEAR`.
 When a new version is released, update the version tag in the script URL:
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/felixeallan/algolia-webflow-filter@v0.6.0/packages/library/dist/algolia-webflow.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/felixeallan/algolia-webflow-filter@v0.7.0/packages/library/dist/algolia-webflow.min.js"></script>
 ```
 
 Then **hard refresh** (Cmd/Ctrl+Shift+R) to bypass the browser cache.
