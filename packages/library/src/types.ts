@@ -10,6 +10,7 @@ export interface AlgoliaInstance {
   // { price: { min: 1000, max: 50000 } }
   ranges: Map<string, { min?: number; max?: number }>
   sortIndex: string
+  matchMode: 'and' | 'or'
   urlState: boolean
   filterAttributes: Set<string>
   hasRendered: boolean

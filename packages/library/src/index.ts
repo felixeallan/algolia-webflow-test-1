@@ -7,14 +7,26 @@ import type { AlgoliaInstance, Hit, SearchResults } from './types'
 async function runSearch(instance: AlgoliaInstance, append = false): Promise<void> {
   const client = liteClient(instance.appId, instance.apiKey)
 
-  // Build facetFilters: same attribute = OR, different attributes = AND
-  // Algolia format: [["category:shoes","category:bags"], "brand:nike"]
+  // Build facetFilters:
+  //   AND mode (default): same attribute = OR, different attributes = AND
+  //     → [["category:shoes","category:bags"], "brand:nike"]
+  //   OR mode: every selected value joins one big OR group
+  //     → [["category:shoes","category:bags","brand:nike"]]
+  // Ranges always AND with facets (Algolia joins facetFilters & numericFilters with AND).
   const facetFilters: Array<string | string[]> = []
-  instance.filters.forEach((values, attribute) => {
-    if (values.size === 0) return
-    const group = [...values].map((v) => `${attribute}:${v}`)
-    facetFilters.push(group.length === 1 ? group[0] : group)
-  })
+  if (instance.matchMode === 'or') {
+    const all: string[] = []
+    instance.filters.forEach((values, attribute) => {
+      values.forEach((v) => all.push(`${attribute}:${v}`))
+    })
+    if (all.length) facetFilters.push(all)
+  } else {
+    instance.filters.forEach((values, attribute) => {
+      if (values.size === 0) return
+      const group = [...values].map((v) => `${attribute}:${v}`)
+      facetFilters.push(group.length === 1 ? group[0] : group)
+    })
+  }
 
   // Build numericFilters: [["price>=1000","price<=50000"]]
   const numericFilters: string[] = []
@@ -465,6 +477,7 @@ function initInstance(wrapper: HTMLElement): void {
     filters: new Map(),
     ranges: new Map(),
     sortIndex: '',
+    matchMode: wrapper.getAttribute('data-algolia-match-mode')?.toLowerCase() === 'or' ? 'or' : 'and',
     urlState: wrapper.hasAttribute('data-algolia-url-state'),
     hasRendered: false,
     filterAttributes: new Set([
