@@ -242,6 +242,16 @@ function audit(): Issue[] {
       issues.push({ level: 'error', category: 'Pagination', message: '[data-algolia-pages] container needs a [data-algolia-page-button-template] child.', element: pagesEl })
     }
 
+    // Prev/Next pair — each is useless without the other
+    const prevBtn = wrapper.querySelector<HTMLElement>('[data-algolia-prev]')
+    const nextBtn = wrapper.querySelector<HTMLElement>('[data-algolia-next]')
+    if (prevBtn && !nextBtn) {
+      issues.push({ level: 'warning', category: 'Pagination', message: '[data-algolia-prev] exists but no [data-algolia-next]. Previous/Next pagination needs both buttons.', element: prevBtn })
+    }
+    if (nextBtn && !prevBtn) {
+      issues.push({ level: 'warning', category: 'Pagination', message: '[data-algolia-next] exists but no [data-algolia-prev]. Previous/Next pagination needs both buttons.', element: nextBtn })
+    }
+
     // Tags
     const tagsEl = wrapper.querySelector<HTMLElement>('[data-algolia-tags]')
     if (tagsEl && !tagsEl.querySelector('[data-algolia-tag-template]')) {
@@ -276,6 +286,10 @@ function injectStyles(): void {
   const css = `
     [data-algolia-inspector-outline] [data-algolia-inspector-tagged] {
       outline: 2px solid ${CYAN};
+      outline-offset: 2px;
+    }
+    [data-algolia-inspector-outline] [data-algolia-inspector-error] {
+      outline: 2px solid #ef4444 !important;
       outline-offset: 2px;
     }
     .aw-inspector-badge {
@@ -486,6 +500,16 @@ function start(): void {
   setOutline(true)
 
   const issues = audit()
+
+  // Mark elements with errors so the outline shows them in red.
+  // Also tag them so the hover tooltip works even on orphan elements
+  // that don't have any data-algolia attribute of their own (e.g. a bare radio).
+  issues.forEach((iss) => {
+    if (iss.level === 'error' && iss.element) {
+      iss.element.setAttribute('data-algolia-inspector-error', '')
+      iss.element.setAttribute('data-algolia-inspector-tagged', '')
+    }
+  })
 
   // Badge
   const badge = document.createElement('div')
