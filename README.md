@@ -211,10 +211,10 @@ For sorting to behave numerically, the field must be a **number** in Algolia. If
 In Webflow → **Site Settings → Custom Code → Footer**:
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/felixeallan/algolia-webflow-filter@v0.7.2/packages/library/dist/algolia-webflow.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/felixeallan/algolia-webflow-filter@v0.8.0/packages/library/dist/algolia-webflow.min.js"></script>
 ```
 
-**Always pin to a version tag** (e.g. `@v0.7.2`). Do not use `@main` — jsDelivr aggressively caches branch URLs.
+**Always pin to a version tag** (e.g. `@v0.8.0`). Do not use `@main` — jsDelivr aggressively caches branch URLs.
 
 ## Step 11 — Build the filter UI
 
@@ -702,6 +702,55 @@ In short: **shared code, isolated infrastructure**. One template repository can 
 
 ---
 
+# Debugging with the Inspector
+
+The library ships with a built-in **Inspector** that audits your page for common configuration mistakes — missing wrapper attributes, mismatched range pairs, broken slider setups, pagination conflicts, and more. It only loads on staging (`*.webflow.io`) and local development hosts, and only when you explicitly opt in.
+
+## Activate it
+
+Append `?algolia-debug` to your staging URL:
+
+```
+https://your-site.webflow.io/cars?algolia-debug
+```
+
+You'll see:
+
+- A floating **Algolia Inspector** badge in the bottom-right corner. A red or yellow dot indicates issues were found; green means clean.
+- All elements with `data-algolia*` attributes get a cyan outline on the page.
+- A small **tooltip** appears next to your cursor showing the exact attribute(s) and value(s) on whatever element you hover.
+
+Click the badge to open the diagnostic panel. Each issue is clickable and scrolls you to the offending element.
+
+## Controls
+
+| Action | Result |
+|---|---|
+| `?algolia-debug` in URL | Loads the Inspector for this page |
+| Remove the param (or refresh without it) | Inspector unloads |
+| Click the floating badge | Opens / closes the diagnostic panel |
+| Toggle "Outline" checkbox in the panel | Shows / hides the cyan outlines + tooltips |
+| `Shift + ?` keyboard shortcut | Same as toggling outline |
+| Click any issue in the panel | Smoothly scrolls to the offending element and pulses an outline around it |
+
+## What it checks
+
+| Category | Checks |
+|---|---|
+| **Wrapper** | `[data-algolia]` exists; required `data-algolia-app-id`, `data-algolia-api-key`, `data-algolia-index` present |
+| **Templates** | `[data-algolia-list]` and `[data-algolia-template]` both exist inside the wrapper |
+| **Filters** | Every `data-algolia-filter` has a `data-algolia-value`; radios in the same filter group share a `name` attribute |
+| **Range** | Every `data-algolia-range-min="attr"` has a matching `data-algolia-range-max="attr"` (and vice versa) |
+| **Range Slider** | Has either static `min`/`max` OR `auto-bounds`; track + both handles present; matching number inputs in the wrapper |
+| **Pagination** | Load More not combined with numbered Pages; `[data-algolia-pages]` has a button template |
+| **Tags** | `[data-algolia-tags]` has a `[data-algolia-tag-template]` child |
+
+## Staging-only by design
+
+The Inspector never runs in production. It checks the URL parameter, the hostname, and only initializes if both match — so even with `?algolia-debug` on a custom-domain production site, nothing happens. Safe to ship.
+
+---
+
 # Operations
 
 ## Re-running the sync (after schema changes)
@@ -724,7 +773,7 @@ In Algolia → your index → **Manage index → Clear index** → type `CLEAR`.
 When a new version is released, update the version tag in the script URL:
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/felixeallan/algolia-webflow-filter@v0.7.2/packages/library/dist/algolia-webflow.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/felixeallan/algolia-webflow-filter@v0.8.0/packages/library/dist/algolia-webflow.min.js"></script>
 ```
 
 Then **hard refresh** (Cmd/Ctrl+Shift+R) to bypass the browser cache.

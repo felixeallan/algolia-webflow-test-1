@@ -1,6 +1,7 @@
 import { liteClient } from 'algoliasearch/lite'
 import type { SearchResponse } from 'algoliasearch/lite'
 import type { AlgoliaInstance, Hit, SearchResults } from './types'
+import { initInspector } from './inspector'
 
 // ─── Search ──────────────────────────────────────────────────────────────────
 
@@ -935,6 +936,7 @@ function initInstance(wrapper: HTMLElement): void {
 
 function init(): void {
   document.querySelectorAll<HTMLElement>('[data-algolia]').forEach(initInstance)
+  initInspector()
 }
 
 if (document.readyState === 'loading') {
