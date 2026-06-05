@@ -445,16 +445,14 @@ async function initRangeSlider(slider: HTMLElement, instance: AlgoliaInstance): 
       const res = await client.search({
         requests: [{ indexName: instance.indexName, query: '', hitsPerPage: 0, facets: [attribute] }],
       })
-      // algoliasearch v5 may return either snake_case or camelCase depending on version
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = res.results[0] as any
-      const facetsStats = result.facets_stats ?? result.facetsStats
-      const stats = facetsStats?.[attribute]
+      // algoliasearch v5 may return facet stats under snake_case or camelCase depending on version
+      const result = res.results[0] as { facets_stats?: Record<string, { min: number; max: number }>; facetsStats?: Record<string, { min: number; max: number }> }
+      const stats = (result.facets_stats ?? result.facetsStats)?.[attribute]
       if (stats) {
         if (Number.isNaN(boundsMin)) boundsMin = stats.min
         if (Number.isNaN(boundsMax)) boundsMax = stats.max
       } else {
-        console.warn(`[algolia-webflow] No facets_stats for "${attribute}". Add it as a numeric facet in Algolia. Response keys:`, Object.keys(result))
+        console.warn(`[algolia-webflow] No facet stats for "${attribute}". Add it as a numeric facet in Algolia.`)
       }
     } catch (err) {
       console.warn('[algolia-webflow] auto-bounds query failed', err)
