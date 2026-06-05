@@ -211,10 +211,10 @@ For sorting to behave numerically, the field must be a **number** in Algolia. If
 In Webflow → **Site Settings → Custom Code → Footer**:
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/felixeallan/algolia-webflow-filter@v0.3.5/packages/library/dist/algolia-webflow.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/felixeallan/algolia-webflow-filter@v0.4.0/packages/library/dist/algolia-webflow.min.js"></script>
 ```
 
-**Always pin to a version tag** (e.g. `@v0.3.5`). Do not use `@main` — jsDelivr aggressively caches branch URLs.
+**Always pin to a version tag** (e.g. `@v0.4.0`). Do not use `@main` — jsDelivr aggressively caches branch URLs.
 
 ## Step 11 — Build the filter UI
 
@@ -384,6 +384,20 @@ For arrays / multi-reference fields where each value should render as a separate
 ## Pagination
 
 Two styles, can be used independently or together.
+
+### Load More button
+
+Appends the next page of results to the existing list without replacing it. Auto-hides when there are no more pages.
+
+| Attribute | Element | Description |
+|---|---|---|
+| `data-algolia-load-more` | any | Clicking appends the next page. Hides automatically on the last page. Changing filters/search/sort resets the list normally. |
+
+```html
+<button data-algolia-load-more>Load more</button>
+```
+
+> **Note:** Algolia caps pagination at 1,000 total results by default. If you need more, increase `paginationLimitedTo` in Algolia → your index → Configuration → Pagination. Also keep `data-hits-per-page` reasonable (12–24) to avoid accumulating too many DOM nodes.
 
 ### Previous / Next buttons
 
@@ -574,7 +588,7 @@ In Algolia → your index → **Manage index → Clear index** → type `CLEAR`.
 When a new version is released, update the version tag in the script URL:
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/felixeallan/algolia-webflow-filter@v0.3.5/packages/library/dist/algolia-webflow.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/felixeallan/algolia-webflow-filter@v0.4.0/packages/library/dist/algolia-webflow.min.js"></script>
 ```
 
 Then **hard refresh** (Cmd/Ctrl+Shift+R) to bypass the browser cache.
