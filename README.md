@@ -366,6 +366,13 @@ A draggable two-handle slider that drives the existing `data-algolia-range-min` 
 
 > ⚠️ **The slider must coexist with `data-algolia-range-min` / `data-algolia-range-max` inputs for the same attribute** somewhere in the wrapper. The slider drives those inputs — they are the source of truth. You can hide them with `display:none` or `hidden` if you only want the slider visible.
 
+**Two-way sync (automatic):**
+
+- Dragging a handle updates the underlying number inputs.
+- Typing into the number inputs moves the slider handles to match.
+- Clicking a **Clear button** (`data-algolia-clear` or `data-algolia-clear="attr"`) resets both the inputs and the slider to the full bounds.
+- Removing the active filter **tag** (`data-algolia-tag-remove`) also resets both the inputs and the slider.
+
 **Static bounds (recommended):**
 
 ```html
