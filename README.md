@@ -333,6 +333,8 @@ See the **HTML structure** and **Data attribute reference** below.
 
 > ⚠️ **Every attribute you filter by must be added as a Facet in Algolia.** Go to your index → **Configuration → Facets → Attributes for faceting** and add the field slug (e.g. `car-brand`, `featured`, `year`). Without this, the filter will silently return no results. After adding, click **Review and Save settings**.
 
+> ⚠️ **Radio buttons in the same filter group must share the same `name` attribute.** This is how the browser knows they are mutually exclusive — selecting one auto-unchecks the others. Checkboxes do not need a shared `name`; each one is independent.
+
 | Attribute | Element | Description |
 |---|---|---|
 | `data-algolia-filter="attr"` + `data-algolia-value="val"` | any (`<label>` recommended) | Click to filter. Auto-detects native `<input type="checkbox">` (multi-select) or `<input type="radio">` (single-select) inside. Same `attr` = OR; different attrs = AND. For boolean fields, use `"true"` or `"false"` as the value. |
