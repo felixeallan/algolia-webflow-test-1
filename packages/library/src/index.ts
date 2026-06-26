@@ -732,6 +732,77 @@ function initInstance(wrapper: HTMLElement): void {
     })
   }
 
+  // Autosuggest wired to the wrapper's own search input.
+  // Looks for [data-algolia-autosuggest] inside the wrapper, then as a sibling.
+  const suggestContainer =
+    wrapper.querySelector<HTMLElement>('[data-algolia-autosuggest]') ??
+    wrapper.parentElement?.querySelector<HTMLElement>('[data-algolia-autosuggest]')
+  const suggestTemplate = suggestContainer?.querySelector<HTMLElement>('[data-algolia-autosuggest-template]')
+
+  if (searchInput && suggestContainer && suggestTemplate) {
+    const suggestClient = liteClient(instance.appId, instance.apiKey)
+    const suggestIndex = instance.indexName
+
+    suggestTemplate.style.display = 'none'
+    suggestContainer.style.display = 'none'
+
+    const clearSuggest = (): void => {
+      suggestContainer.querySelectorAll('[data-algolia-autosuggest-item]').forEach((el) => el.remove())
+      suggestContainer.style.display = 'none'
+    }
+
+    const renderSuggest = (hits: Hit[]): void => {
+      suggestContainer.querySelectorAll('[data-algolia-autosuggest-item]').forEach((el) => el.remove())
+      if (!hits.length) { suggestContainer.style.display = 'none'; return }
+
+      hits.forEach((hit) => {
+        const item = suggestTemplate.cloneNode(true) as HTMLElement
+        item.removeAttribute('data-algolia-autosuggest-template')
+        item.setAttribute('data-algolia-autosuggest-item', '')
+        item.style.display = ''
+
+        item.querySelectorAll<HTMLElement>('[data-algolia-bind]').forEach((el) => {
+          const field = el.getAttribute('data-algolia-bind')!
+          const attr = el.getAttribute('data-algolia-attr')
+          const raw = field.split('.').reduce<unknown>(
+            (obj, key) => (obj && typeof obj === 'object' ? (obj as Record<string, unknown>)[key] : undefined),
+            hit as unknown
+          )
+          const value = String(raw ?? '')
+          if (attr) el.setAttribute(attr, value)
+          else el.textContent = value
+        })
+
+        item.querySelectorAll<HTMLAnchorElement>('[data-algolia-autosuggest-link]').forEach((a) => {
+          const url = String(hit['url'] ?? '')
+          if (url) a.href = url
+        })
+
+        item.addEventListener('mousedown', (e) => {
+          e.preventDefault()
+          const url = String(hit['url'] ?? '')
+          if (url) window.location.href = url
+        })
+
+        suggestContainer.appendChild(item)
+      })
+
+      suggestContainer.style.display = ''
+    }
+
+    const querySuggest = debounce(async (q: string) => {
+      if (!q.trim()) { clearSuggest(); return }
+      try {
+        const res = await suggestClient.search({ requests: [{ indexName: suggestIndex, query: q, hitsPerPage: 5 }] })
+        renderSuggest((res.results[0] as SearchResponse<Hit>).hits)
+      } catch { clearSuggest() }
+    }, 200)
+
+    searchInput.addEventListener('input', () => querySuggest(searchInput.value))
+    searchInput.addEventListener('blur', () => setTimeout(clearSuggest, 150))
+    searchInput.addEventListener('keydown', (e) => { if (e.key === 'Escape') { clearSuggest(); searchInput.blur() } })
+  }
+
   // Filter elements — listen on the input's change event when present so we
   // don't race with the browser/Webflow's own click handling. For plain divs
   // (no input inside), fall back to a click toggle.
