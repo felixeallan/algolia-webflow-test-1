@@ -730,13 +730,45 @@ function initInstance(wrapper: HTMLElement): void {
   const debounceMs = Number(wrapper.getAttribute('data-algolia-debounce') ?? 300)
   const debouncedSearch = debounce(search, debounceMs)
 
-  // Search input
+  // Search input. A [data-algolia-submit] button switches the query to manual
+  // mode: typing updates the stored query but doesn't search until the button is
+  // clicked (or Enter is pressed). Filters/sort stay instant. Without the button,
+  // search runs instantly on input as before.
   const searchInput = wrapper.querySelector<HTMLInputElement>('[data-algolia-search]')
+  const submitBtn = wrapper.querySelector<HTMLElement>('[data-algolia-submit]')
+  const manualSearch = !!submitBtn
+
   if (searchInput) {
-    searchInput.addEventListener('input', () => {
-      instance.query = searchInput.value
+    if (manualSearch) {
+      // Track the typed value without searching
+      searchInput.addEventListener('input', () => {
+        instance.query = searchInput.value
+      })
+      // Enter submits (and never lets the surrounding Webflow form submit)
+      searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          instance.query = searchInput.value
+          instance.page = 0
+          search()
+        }
+      })
+    } else {
+      searchInput.addEventListener('input', () => {
+        instance.query = searchInput.value
+        instance.page = 0
+        debouncedSearch()
+      })
+    }
+  }
+
+  // Submit button (manual search mode)
+  if (submitBtn) {
+    submitBtn.addEventListener('click', (e) => {
+      e.preventDefault()
+      if (searchInput) instance.query = searchInput.value
       instance.page = 0
-      debouncedSearch()
+      search()
     })
   }
 

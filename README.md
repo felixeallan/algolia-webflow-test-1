@@ -330,6 +330,7 @@ See the **HTML structure** and **Data attribute reference** below.
 | Attribute | Element | Description |
 |---|---|---|
 | `data-algolia-search` | `<input>` | Text search input (inside a wrapper) |
+| `data-algolia-submit` | `<button>` / any | (optional) Adding this button switches the text query to **manual mode**: typing no longer searches instantly — the search runs only when the button is clicked or Enter is pressed. Filters and sort stay instant. Omit the button for instant search (default). |
 
 ## Global search box (navbar / standalone)
 
