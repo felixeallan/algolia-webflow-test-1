@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { collections, staticPages } from '../../search-all-config'
 
 interface WebflowItem {
   id: string
@@ -93,76 +94,48 @@ export async function POST(request: NextRequest) {
     const indexName = process.env.ALGOLIA_SEARCH_ALL_INDEX!
     const siteUrl = (process.env.SITE_URL ?? '').replace(/\/$/, '')
 
-    const carsCollectionId = process.env.WEBFLOW_CARS_COLLECTION_ID!
-    const makesCollectionId = process.env.WEBFLOW_MAKES_COLLECTION_ID!
-    const authorsCollectionId = process.env.WEBFLOW_AUTHORS_COLLECTION_ID!
-
     const records: SearchAllRecord[] = []
+    const breakdown: Record<string, number> = {}
 
-    // ── Cars ──────────────────────────────────────────────────────────────────
-    const cars = (await fetchAllItems(webflowToken, carsCollectionId))
-      .filter((i) => !i.isDraft && !i.isArchived)
-    for (const item of cars) {
-      records.push({
-        objectID: `car__${item.id}`,
-        title: String(item.fieldData.name ?? ''),
-        description: String(item.fieldData.description ?? ''),
-        url: `${siteUrl}/cars/${item.fieldData.slug}`,
-        image: imageUrl(item.fieldData.image),
-        type: 'Car',
-        date: item.lastUpdated,
-      })
+    for (const col of collections) {
+      const items = (await fetchAllItems(webflowToken, col.collectionId))
+        .filter((i) => !i.isDraft && !i.isArchived)
+
+      for (const item of items) {
+        const slug = String(item.fieldData.slug ?? '')
+        records.push({
+          objectID: `${col.prefix}__${item.id}`,
+          title: String(item.fieldData[col.titleField] ?? ''),
+          description: col.descriptionField ? String(item.fieldData[col.descriptionField] ?? '') : '',
+          url: `${siteUrl}${col.urlPattern.replace('{slug}', slug)}`,
+          image: col.imageField ? imageUrl(item.fieldData[col.imageField]) : '',
+          type: col.type,
+          date: item.lastUpdated,
+        })
+      }
+
+      breakdown[col.type] = items.length
     }
 
-    // ── Makes ─────────────────────────────────────────────────────────────────
-    const makes = (await fetchAllItems(webflowToken, makesCollectionId))
-      .filter((i) => !i.isDraft && !i.isArchived)
-    for (const item of makes) {
+    for (const page of staticPages) {
       records.push({
-        objectID: `make__${item.id}`,
-        title: String(item.fieldData.name ?? ''),
-        description: '',
-        url: `${siteUrl}/makes/${item.fieldData.slug}`,
-        image: imageUrl(item.fieldData.logo),
-        type: 'Make',
-        date: item.lastUpdated,
+        objectID: page.objectID,
+        title: page.title,
+        description: page.description,
+        url: `${siteUrl}${page.urlPath}`,
+        image: '',
+        type: 'Page',
+        date: '',
       })
     }
-
-    // ── Authors ───────────────────────────────────────────────────────────────
-    const authors = (await fetchAllItems(webflowToken, authorsCollectionId))
-      .filter((i) => !i.isDraft && !i.isArchived)
-    for (const item of authors) {
-      records.push({
-        objectID: `author__${item.id}`,
-        title: String(item.fieldData.name ?? ''),
-        description: String(item.fieldData['bio-summary'] ?? ''),
-        url: `${siteUrl}/author/${item.fieldData.slug}`,
-        image: imageUrl(item.fieldData.picture),
-        type: 'Author',
-        date: item.lastUpdated,
-      })
-    }
-
-    // ── Static pages ──────────────────────────────────────────────────────────
-    const staticPages: SearchAllRecord[] = [
-      { objectID: 'page__about',   title: 'About',   description: 'Learn about us',         url: `${siteUrl}/about`,   image: '', type: 'Page', date: '' },
-      { objectID: 'page__pricing', title: 'Pricing', description: 'View our pricing plans',  url: `${siteUrl}/pricing`, image: '', type: 'Page', date: '' },
-      { objectID: 'page__contact', title: 'Contact', description: 'Get in touch with us',    url: `${siteUrl}/contact`, image: '', type: 'Page', date: '' },
-    ]
-    records.push(...staticPages)
+    breakdown['Page'] = staticPages.length
 
     await algoliaIndexObjects(algoliaAppId, algoliaKey, indexName, records as unknown as Record<string, unknown>[])
 
     return NextResponse.json({
       success: true,
       synced: records.length,
-      breakdown: {
-        cars: cars.length,
-        makes: makes.length,
-        authors: authors.length,
-        pages: staticPages.length,
-      },
+      breakdown,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
