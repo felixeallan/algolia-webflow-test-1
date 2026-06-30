@@ -730,6 +730,10 @@ function initInstance(wrapper: HTMLElement): void {
   const debounceMs = Number(wrapper.getAttribute('data-algolia-debounce') ?? 300)
   const debouncedSearch = debounce(search, debounceMs)
 
+  // Placeholder that autosuggest wiring replaces once it's set up below.
+  // Allows the Enter and submit handlers (defined first) to close the dropdown.
+  let closeSuggest = (): void => {}
+
   // Search input. A [data-algolia-submit] button switches the query to manual
   // mode: typing updates the stored query but doesn't search until the button is
   // clicked (or Enter is pressed). Filters/sort stay instant. Without the button,
@@ -763,6 +767,7 @@ function initInstance(wrapper: HTMLElement): void {
         e.preventDefault()
         instance.query = searchInput.value
         instance.page = 0
+        closeSuggest()
         search()
       }
     })
@@ -780,6 +785,7 @@ function initInstance(wrapper: HTMLElement): void {
       e.preventDefault()
       if (searchInput) instance.query = searchInput.value
       instance.page = 0
+      closeSuggest()
       search()
     })
   }
@@ -802,6 +808,7 @@ function initInstance(wrapper: HTMLElement): void {
       suggestContainer.querySelectorAll('[data-algolia-autosuggest-item]').forEach((el) => el.remove())
       suggestContainer.style.display = 'none'
     }
+    closeSuggest = clearSuggest
 
     const renderSuggest = (hits: Hit[]): void => {
       suggestContainer.querySelectorAll('[data-algolia-autosuggest-item]').forEach((el) => el.remove())
